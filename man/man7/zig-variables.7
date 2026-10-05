@@ -1,0 +1,376 @@
+.TH ZIG_VARIABLES 7 "2026-10-06" "Zig 0.17.0" "Zig Manual"
+.SH NAME
+zig-variables \- variable declarations, mutability, and storage in Zig
+.SH SYNOPSIS
+.nf
+[\fIpub\fR] [\fIextern\fR | \fIexport\fR] [\fIthreadlocal\fR] [\fIcomptime\fR]
+    (\fBconst\fR | \fBvar\fR) \fIname\fR [\fB:\fR \fIType\fR] \fB=\fR \fIinit\fR \fB;\fR
+.fi
+.PP
+The type annotation is optional when the initializer determines the type.
+The initializer is mandatory. Declarations without an initializer are
+rejected by the parser.
+.SH DESCRIPTION
+Zig has exactly two declaration keywords: \fBconst\fR and \fBvar\fR.
+\fBconst\fR creates an immutable binding; \fBvar\fR creates a mutable one.
+There is no \fBlet\fR, \fBfinal\fR, \fBmutable\fR, or \fBimmutable\fR.
+.PP
+A declaration fixes three independent properties at the point of writing:
+.TP
+\fBMutability\fR
+Set by the keyword (\fBconst\fR or \fBvar\fR).
+.TP
+\fBKnowability\fR
+Set by whether the initializer is compile-time constant. A \fBcomptime\fR
+modifier forces compile-time evaluation.
+.TP
+\fBStorage duration\fR
+Set by the declaration site: local, namespace-level, function-scoped global,
+thread-local, or comptime-only.
+.PP
+The compiler does not infer mutability from usage, does not guess storage
+class, and does not defer binding decisions to link time except for
+\fBextern\fR symbols.
+.SH DECLARATIONS
+.SS const
+.nf
+    const name = init;
+    const name: Type = init;
+.fi
+.PP
+The binding cannot be reassigned. Assignment to a \fBconst\fR name is a
+compile error:
+.nf
+    const x = 10;
+    x = 20;   // error: cannot assign to constant
+.fi
+.PP
+\fBconst\fR applies to the binding, not to the pointee. A \fBconst\fR
+pointer to non-const data may modify the pointed-to value:
+.nf
+    const p: *u8 = &byte;
+    p.* = 42;   // ok
+.fi
+.PP
+To make the pointee immutable, qualify the pointed-to type:
+.nf
+    const p: *const u8 = &byte;
+    p.* = 42;   // error: cannot assign to dereference of const pointer
+.fi
+.SS var
+.nf
+    var name = init;
+    var name: Type = init;
+.fi
+.PP
+The binding may be reassigned for the duration of its lifetime. Zig rejects
+a \fBvar\fR that is never mutated:
+.nf
+    var x: i32 = 5;   // error: local variable is never mutated
+.fi
+.PP
+Discard the binding explicitly when mutation is not required:
+.nf
+    var x: i32 = 5;
+    _ = &x;
+.fi
+.PP
+The same rule applies to unused \fBconst\fR bindings
+(\fBunused local variable\fR).
+.SS Modifiers
+.TP
+\fBcomptime\fR
+Forces the value to be computed during semantic analysis. See the
+\fBCOMPTIME\fR section.
+.TP
+\fBthreadlocal\fR
+Each thread receives an independent instance. Valid only at namespace
+level. Restricted to \fBvar\fR. See the \fBSTORAGE DURATION\fR section.
+.TP
+\fBextern\fR
+The symbol is provided by another object at link time.
+.TP
+\fBexport\fR
+The symbol is published to the linker with a C-ABI-compatible type.
+.TP
+\fBpub\fR
+Makes a namespace-level declaration visible outside its containing
+namespace.
+.SH INITIALIZATION
+Every variable must be initialized at the point of declaration.
+Declarations without an initializer are rejected by the parser:
+.nf
+    var x: i32;   // error: expected '=', found ';'
+.fi
+.PP
+When a value is not yet available, initialize with \fBundefined\fR.
+.SH UNDEFINED
+.nf
+    var x: T = undefined;
+.fi
+.PP
+\fBundefined\fR marks memory with no meaningful value. Reading it before
+writing is illegal behavior:
+.IP \(bu 2
+In \fBDebug\fR and \fBReleaseSafe\fR, the memory is filled with \fB0xaa\fR
+and reads are checked at runtime.
+.IP \(bu 2
+In \fBReleaseFast\fR and \fBReleaseSmall\fR, the contents are unspecified
+and the optimizer may assume the memory is never read.
+.PP
+\fBundefined\fR is not \fBnull\fR. \fBnull\fR is a value of an optional
+type. \fBundefined\fR is the absence of a value.
+.PP
+\fBundefined\fR is not zero. The runtime representation is unspecified.
+.PP
+\fBundefined\fR coerces to any type, which makes it usable as a placeholder
+in generic code.
+.SH SCOPE AND SHADOWING
+An identifier refers to at most one binding within a scope. Zig rejects
+shadowing:
+.nf
+    const x = 10;
+    fn f() void {
+        const x = 20;   // error: local variable shadows declaration
+    }
+.fi
+.PP
+Declarations in disjoint scopes may reuse the same name:
+.nf
+    fn f() void {
+        { const x = 1; _ = x; }
+        { const x = 2; _ = x; }
+    }
+.fi
+.PP
+Field names are resolved through the type, not through the lexical scope,
+and do not participate in shadowing.
+.SH STORAGE DURATION
+.SS Local variables
+Declared inside a function, comptime block, or labeled block. Stored on the
+stack unless the compiler assigns a register. Taking the address forces a
+stack slot. The address is invalid after the enclosing block returns:
+.nf
+    fn f() *i32 {
+        var x: i32 = 42;
+        return &x;   // error: returning address of local variable
+    }
+.fi
+.PP
+A local \fBconst\fR is not necessarily comptime-known. It is comptime-known
+only when its initializer is:
+.nf
+    fn f(n: usize) void {
+        const a = 42;      // comptime-known
+        const b = n * 2;   // runtime-known
+    }
+.fi
+.SS Namespace-level variables
+Declared at file scope or inside a struct, union, enum, or opaque type.
+Stored in the global data section. The address is fixed at link time and
+remains valid for the program's lifetime.
+.PP
+Namespace-level declarations are order-independent and lazily analyzed.
+Unreferenced declarations are never analyzed, and compile errors they
+contain are never reported:
+.nf
+    const unused = @compileError("never fires");   // ok
+    const used   = @compileError("fires");         // error
+.fi
+.PP
+Namespace-level initializers are implicitly \fBcomptime\fR when possible.
+.SS Function-scoped globals
+Zig has no \fBstatic\fR keyword. A namespace declared inside a function
+serves the same purpose:
+.nf
+    fn counter() u32 {
+        const S = struct { var count: u32 = 0; };
+        S.count += 1;
+        return S.count;
+    }
+.fi
+.PP
+\fBS.count\fR lives in the global data section and persists across calls.
+The pattern is not thread-safe.
+.SS Thread-local variables
+.nf
+    threadlocal var name: T = init;
+.fi
+.PP
+Each thread receives an independent instance. The initializer must be
+comptime-known. Valid only at namespace level.
+.PP
+Constraints:
+.IP \(bu 2
+\fBthreadlocal const\fR is rejected. \fBconst\fR bindings are inlined and
+have no storage to localize.
+.IP \(bu 2
+Declarations inside functions are rejected. Thread-local storage is
+allocated at thread creation.
+.IP \(bu 2
+The initializer must be a compile-time constant.
+.PP
+With \fB-fsingle-threaded\fR, \fBthreadlocal\fR is treated as an ordinary
+namespace-level binding.
+.SS Comptime variables
+.nf
+    comptime var name = init;
+.fi
+.PP
+Computed and stored entirely during semantic analysis. No runtime storage
+is allocated. See the \fBCOMPTIME\fR section.
+.SH POINTERS AND MUTABILITY
+Four combinations of pointer and pointee mutability:
+.nf
+    *T                pointer mutable, pointee mutable
+    *const T          pointer mutable, pointee immutable
+    const *T          pointer immutable, pointee mutable
+    const *const T    pointer immutable, pointee immutable
+.fi
+.PP
+\fBconst\fR attaches to the item written immediately after it.
+.SH COMPTIME
+\fBcomptime\fR forces evaluation during semantic analysis. It can appear as
+a modifier on a declaration, as a parameter qualifier, or as a block:
+.nf
+    fn max(comptime T: type, a: T, b: T) T {
+        return if (b > a) b else a;
+    }
+
+    comptime {
+        var sum: u32 = 0;
+        for (1..10) |i| sum += i;
+    }
+.fi
+.PP
+Properties:
+.IP \(bu 2
+The value is fully determined at compile time.
+.IP \(bu 2
+Runtime values cannot be stored into a \fBcomptime var\fR.
+.IP \(bu 2
+All control flow inside a comptime context is evaluated at compile time.
+.IP \(bu 2
+The value may participate in type construction.
+.PP
+A \fBcomptime var\fR exists only during compilation. It is not present in
+the emitted binary.
+.SH LIFETIME AND OWNERSHIP
+Reading or writing memory after its lifetime ends is illegal behavior.
+Three lifetime categories:
+.TP
+\fBFunction-local\fR
+From declaration to the end of the enclosing block.
+.TP
+\fBProgram\fR
+Namespace-level bindings, valid for the entire program.
+.TP
+\fBHeap\fR
+From allocation to \fBfree\fR or \fBdestroy\fR.
+.PP
+Ownership is not enforced by the compiler. The following conventions are
+used throughout the standard library:
+.TP
+\fB"Caller owns the returned memory"\fR
+The function allocates; the caller releases.
+.TP
+\fB"Callee owns the memory"\fR
+The function retains the reference; the caller must not release.
+.TP
+\fB"Borrowed reference"\fR
+The function uses the memory without taking ownership. The caller keeps it
+alive for the duration of the call.
+.SH extern AND export
+\fBextern\fR binds to a symbol defined in another object file:
+.nf
+    extern var some_global: u32;
+    extern "c" var errno: c_int;
+.fi
+.PP
+\fBexport\fR publishes a symbol with a C-ABI-compatible type:
+.nf
+    export var counter: u32 = 0;
+    export fn get_counter() u32 { return counter; }
+.fi
+.PP
+Pointer types in \fBextern\fR declarations must use C-compatible forms:
+\fB[*c]T\fR for C pointers, \fB*T\fR for single-item pointers with known
+alignment.
+.SH VERSION NOTES
+The following changes apply to Zig 0.17.0.
+.SS Array multiplication removed
+.nf
+    var a = [1]u8{0} ** n;       // removed
+    var a: [n]u8 = @splat(0);    // replacement
+.fi
+.SS void initialization
+\fBvoid\fR values are written as \fB{}\fR. The forms \fBvoid{}\fR and
+\fB.{}\fR for void are no longer accepted.
+.SS @intFromEnum and @enumFromInt replaced
+.nf
+    @intFromEnum(e)     ->  @backingInt(e)
+    @enumFromInt(x)     ->  @fromBackingInt(x)
+.fi
+.PP
+The replacements also operate on packed structs and packed unions.
+.SS @divCeil
+Added. Computes ceiling division:
+.nf
+    const q = @divCeil(10, 3);   // 4
+.fi
+.SS @Vector in extern types
+\fB@Vector\fR is no longer permitted in \fBextern\fR structs and unions, or
+in parameters of functions with \fBcallconv(.winapi)\fR. Use an array field
+with an accessor:
+.nf
+    const V = extern union {
+        arr: [8]f32,
+        pub fn vec(self: @This()) @Vector(8, f32) {
+            return self.arr;
+        }
+    };
+.fi
+.SS @BitCast on extern structs
+\fB@BitCast\fR rejects \fBextern\fR structs. Implement a userland bitcast:
+.nf
+    fn bitCast(T: type, v: anytype) T {
+        const N = @sizeOf(T);
+        if (@sizeOf(@TypeOf(v)) != N) @compileError("size mismatch");
+        var out: T = undefined;
+        @as(*[N]u8, @ptrCast(&out)).* =
+            @as(*const [N]u8, @ptrCast(&v)).*;
+        return out;
+    }
+.fi
+.SH COMMON ERRORS
+.TP
+\fBlocal variable is never mutated\fR
+Change \fBvar\fR to \fBconst\fR, or assign to \fB_\fR.
+.TP
+\fBexpected '=', found ';'\fR
+Every declaration requires an initializer. Use \fBundefined\fR if the
+value is not yet known.
+.TP
+\fBlocal variable shadows declaration of 'name'\fR
+Rename one binding. Shadowing is forbidden.
+.TP
+\fBreturning address of local variable\fR
+Return by value, return a heap allocation, or reference a namespace-level
+binding.
+.TP
+\fBcannot assign to dereference of const pointer\fR
+The pointee is immutable. Remove \fBconst\fR from the pointed-to type, or
+restructure to avoid the write.
+.TP
+\fBthread local variables cannot be const\fR
+Use \fBvar\fR for \fBthreadlocal\fR declarations.
+.SH SEE ALSO
+.BR zig (1),
+.BR zig-build (1),
+.BR zig-comptime (7),
+.BR zig-pointers (7),
+.BR zig-syntax (7)
+.PP
+Zig language reference: \fBhttps://ziglang.org/documentation/\fR
+.SH AUTHORS
+mroczect and contributors.

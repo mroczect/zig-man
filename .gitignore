@@ -1,0 +1,6 @@
+dumy.*
+build/
+*.tmp
+*.bak
+*.swp
+*~

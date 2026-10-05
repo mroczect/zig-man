@@ -1,0 +1,79 @@
+ZIG-MAN(7)						    Zig Manual						       ZIG-MAN(7)
+
+NAME
+       zig-man - man pages for the Zig programming language
+
+DESCRIPTION
+       zig-man is a collection of manual pages for the Zig programming language.
+
+INSTALL
+	   make install
+
+       Default prefix is /usr/local. Override with PREFIX=/path. Stage with DESTDIR=/path. Remove with make uninstall.
+
+READ
+	   man 7 zig-variables
+	   man 1 zig
+
+       Read from source without installing:
+	   man -l man/man7/zig-variables.7
+
+STRUCTURE
+	   man/man1/   commands
+	   man/man3/   library reference
+	   man/man5/   file formats
+	   man/man7/   topic overviews
+
+DEVELOPMENT
+   Preview
+	   make preview FILE=man/man7/zig-variables.7
+	   make watch	FILE=man/man7/zig-variables.7
+
+   Lint and check
+	   make lint
+	   make check
+	   make check-strict
+
+   Render
+	   make html	# build/html/
+	   make pdf	# build/pdf/
+	   make txt	# build/txt/
+
+   Metadata
+	   make format-header
+	   make format-footer
+	   make format
+
+       The commit hook in .githooks/pre-commit updates the .TH date automatically. Enable it with:
+	   make install-hooks
+
+WRITING PAGES
+       Files are named name.section. The first line is .TH:
+	   .TH ZIG-VARIABLES 7 "2026-01-01" "Zig 0.17.0" "Zig Manual"
+
+       Every page ends with three sections in this order:
+	   .SH AUTHORS
+	   .SH COPYRIGHT
+	   .SH SOURCE
+
+       Run make format to fill these in, or enable the commit hook.
+
+CONTRIBUTING
+       Pull requests welcome. Run make lint and make check before opening a pull request.
+
+LICENSE
+       CC BY-SA 4.0. See LICENSE.
+
+SEE ALSO
+       man(1), man(7), mandoc(1), groff(1)
+
+AUTHORS
+       mroczect and contributors.
+
+COPYRIGHT
+       Copyright © 2026 mroczect.  Licensed under CC BY-SA 4.0.
+
+SOURCE
+       https://github.com/mroczect/zig-man
+
+Zig 0.17.0						    2026-01-01						       ZIG-MAN(7)

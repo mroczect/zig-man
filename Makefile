@@ -61,7 +61,8 @@ check-meta:
 		sec=$${f##*.}; \
 		base=$$(basename "$$f" ".$$sec"); \
 		name=$$(echo "$$base" | tr 'a-z-' 'A-Z_'); \
-		date=$$(git log -1 --format=%as -- "$$f" 2>/dev/null || date +%F); \
+		date=$$(git log -1 --format=%as -- "$$f" 2>/dev/null); \
+		[ -n "$$date" ] || date=$$(date +%F); \
 		expect=".TH $$name $$sec \"$$date\" \"$(ZM_VER)\" \"$(ZM_MANUAL)\""; \
 		actual=$$(head -1 "$$f"); \
 		if [ "$$actual" != "$$expect" ]; then \
@@ -162,19 +163,16 @@ format-header:
 		sec=$${f##*.}; \
 		base=$$(basename "$$f" ".$$sec"); \
 		name=$$(echo "$$base" | tr 'a-z-' 'A-Z_'); \
-		if git rev-parse --git-dir >/dev/null 2>&1 && \
-		   git ls-files --error-unmatch "$$f" >/dev/null 2>&1; then \
-			date=$$(git log -1 --format=%as -- "$$f"); \
-		else \
-			date=$$(date +%F); \
-		fi; \
+		date=$$(git log -1 --format=%as -- "$$f" 2>/dev/null); \
+		[ -n "$$date" ] || date=$$(date +%F); \
 		sed -i "1s|^\.TH .*|.TH $$name $$sec \"$$date\" \"$(ZM_VER)\" \"$(ZM_MANUAL)\"|" "$$f"; \
 		echo "  $$f -> $$date"; \
 	done
 
 format-footer:
 	@for f in $(PAGES); do \
-		year=$$(git log -1 --format=%ad --date=format:%Y -- "$$f" 2>/dev/null || date +%Y); \
+		year=$$(git log -1 --format=%ad --date=format:%Y -- "$$f" 2>/dev/null); \
+		[ -n "$$year" ] || year=$$(date +%Y); \
 		awk -v author='$(ZM_AUTHOR)' -v year="$$year" -v src='$(ZM_SOURCE)' \
 		    -v lic='$(ZM_LICENSE)' '\
 			BEGIN { skip=0 } \

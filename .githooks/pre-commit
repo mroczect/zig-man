@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+# Auto-update .TH date for staged man pages, using today's date
+for f in $(git diff --cached --name-only --diff-filter=ACM \
+        | grep -E '^man/man[0-9]+/.*\.[1-9]$' || true); do
+    sec="${f##*.}"
+    base=$(basename "$f" ".$sec")
+    name=$(echo "$base" | tr 'a-z-' 'A-Z_')
+    date=$(date +%F)
+    sed -i "1s|^\.TH .*|.TH $name $sec \"$date\" \"Zig 0.17.0\" \"Zig Manual\"|" "$f"
+    git add "$f"
+done

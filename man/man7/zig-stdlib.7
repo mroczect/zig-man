@@ -1,0 +1,92 @@
+.TH ZIG_STDLIB 7 "2026-10-06" "Zig 0.17.0" "Zig Manual"
+.SH NAME
+zig-stdlib \- overview of the Zig Standard Library
+.SH DESCRIPTION
+The Zig Standard Library contains commonly used algorithms, data
+structures, and definitions to help build programs or libraries.
+.PP
+The library ships with every Zig distribution. It is not a separate
+package, and no external dependency is required to use it.
+.PP
+The Zig Standard Library is documented separately from the language
+reference. The upstream documentation is available at:
+.PP
+.RS 4
+\fBhttps://ziglang.org/documentation/master/std/\fR
+.RE
+.SH LOCAL DOCUMENTATION
+A local, offline copy of the Standard Library documentation is provided
+with each Zig distribution. It can be served over a local web server:
+.nf
+    zig std
+.fi
+.PP
+This command starts a small HTTP server on a local port and prints the
+URL to standard output. Open the URL in a web browser to read the
+documentation. Press Ctrl-C to stop the server.
+.PP
+The documentation is generated from doc comments in the source. It
+reflects the exact version of the Standard Library that is installed
+with the Zig compiler being used.
+.SH USE IN THIS MANUAL
+Many pages in this manual reference types, functions, and modules from
+the Standard Library. Refer to the upstream documentation for the
+complete API. This page only provides an overview; it does not document
+individual functions.
+.PP
+Commonly referenced modules:
+.TP
+\fBstd\.mem\fR
+Allocators, slices, and memory utilities.
+.TP
+\fBstd\.fs\fR
+Filesystem operations: file handles, directories, paths.
+.TP
+\fBstd\.io\fR
+Input and output primitives.
+.TP
+\fBstd\.fmt\fR
+Formatted printing and parsing.
+.TP
+\fBstd\.math\fR
+Numeric functions and constants.
+.TP
+\fBstd\.testing\fR
+Assertions and test utilities.
+.TP
+\fBstd\.json\fR
+JSON serialization and deserialization.
+.TP
+\fBstd\.process\fR
+Process arguments, environment, and spawning.
+.TP
+\fBstd\.Thread\fR
+Threads, mutexes, and synchronization primitives.
+.TP
+\fBstd\.heap\fR
+General-purpose allocators: \fBGPA\fR, \fBc_allocator\fR,
+\fBpage_allocator\fR.
+.SH ALLOCATOR MODEL
+The Standard Library does not have a default allocator. Any function
+that allocates memory takes an allocator as a parameter. This makes the
+library usable in freestanding environments, operating system kernels,
+and embedded targets where no default heap exists.
+.PP
+See \fBstd\.mem\.Allocator\fR for the allocator interface.
+.SH SEE ALSO
+.BR zig (1),
+.BR zig-build (1),
+.BR zig-introduction (7),
+.BR zig-variables (7)
+.PP
+Standard Library documentation:
+\fBhttps://ziglang.org/documentation/master/std/\fR
+.PP
+Zig language reference: \fBhttps://ziglang.org/documentation/\fR
+.SH AUTHORS
+mroczect and contributors.
+.SH COPYRIGHT
+Copyright \(co 2026 mroczect.
+Licensed under CC BY-SA 4.0.
+.SH SOURCE
+https://github.com/mroczect/zig-man

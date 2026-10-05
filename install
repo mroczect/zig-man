@@ -1,0 +1,211 @@
+ZIG-MAN-INSTALL(7)					    Zig Manual					       ZIG-MAN-INSTALL(7)
+
+NAME
+       zig-man-install - installation guide for zig-man man pages
+
+SYNOPSIS
+       make install [PREFIX=/path] [DESTDIR=/path]
+       make uninstall [PREFIX=/path] [DESTDIR=/path]
+
+DESCRIPTION
+       This  page  documents  how to install zig-man, a collection of manual pages for the Zig programming language, on Linux and
+       other Unix-like systems.
+
+       zig-man is distributed as source. Installation is performed by make(1) and consists of copying man source files	into  the
+       system manual page hierarchy. No compilation step is required.
+
+REQUIREMENTS
+       The following tools are required at install time:
+
+       make(1)
+	      GNU Make or BSD Make. The provided Makefile is POSIX-compatible and works with both.
+
+       install(1)
+	      The BSD install utility, present in coreutils and BSD userlands.
+
+       man(1) The manual page viewer. Usually provided by man-db on Linux or mandoc on BSD.
+
+       mandb(8)
+	      Optional. Used to update the manual page index after installation.  If absent, make install skips this step.
+
+DEPENDENCIES
+       The following tools are used by auxiliary targets. They are not required for installation.
+
+       mandoc(1)
+	      Used by make lint, make html, and make txt. Provides syntax validation and rendering to HTML and plain text.
+
+       groff(1)
+	      Used by make pdf. Provides the man macro package and PostScript output.
+
+       ghostscript(1)
+	      Provides ps2pdf(1), used as a fallback when groff cannot produce PDF directly.
+
+       entr(1)
+	      Used by make watch for live preview. If absent, inotifywait(1) is used instead.
+
+       hunspell(1) or aspell(1)
+	      Used by make spell for spell checking.
+
+       Installation of these tools varies by distribution:
+	   # Fedora / RHEL / CentOS
+	   sudo dnf install mandoc groff ghostscript man-db entr \
+			    inotify-tools hunspell
+
+	   # Debian / Ubuntu
+	   sudo apt install mandoc groff ghostscript man-db entr \
+			    inotify-tools hunspell
+
+	   # Arch Linux
+	   sudo pacman -S mandoc groff ghostscript man-db entr \
+			  inotify-tools hunspell
+
+	   # Alpine Linux
+	   sudo apk add mandoc groff ghostscript man-db entr \
+			inotify-tools hunspell
+
+BUILD FROM SOURCE
+       Obtain the source tree and enter it:
+	   git clone https://github.com/mroczect/zig-man
+	   cd zig-man
+
+       No build step is required. The manual pages are plain roff source.
+
+INSTALLATION PATHS
+       By default, pages are installed under /usr/local:
+	   /usr/local/share/man/man1/	 commands
+	   /usr/local/share/man/man3/	 library reference
+	   /usr/local/share/man/man5/	 file formats
+	   /usr/local/share/man/man7/	 topic overviews
+
+       The  prefix  is	controlled by the PREFIX variable. The manual page directory is derived as $(PREFIX)/share/man and can be
+       overridden directly with MANDIR.
+
+       Install into a staging directory, for packaging or testing, with DESTDIR:
+	   make install DESTDIR=/tmp/pkgroot
+
+       This places files under /tmp/pkgroot/usr/local/share/man.
+
+INSTALL
+       Run:
+	   make install
+
+       To install under a custom prefix:
+	   make install PREFIX=$HOME/.local
+
+       This installs to $HOME/.local/share/man. Make sure this directory is in the manual page search path. See the MANPATH  sec‐
+       tion below.
+
+       To install with elevated privileges, either run as root or use sudo(8):
+	   sudo make install
+
+       The  install  target copies files with mode 0644 and creates destination directories as needed. After copying, it attempts
+       to run mandb(8) if available.
+
+POST-INSTALLATION
+       After installation, verify that the pages are found:
+	   man 7 zig-variables
+	   man 7 zig-man-install
+	   man 1 zig
+
+       If the pages are not found, the manual page database may need to be updated:
+	   sudo mandb
+
+       On systems using mandoc as the primary viewer, the makewhatis(8) database is used instead. Consult the distribution  docu‐
+       mentation for the appropriate command.
+
+   MANPATH
+       If pages are installed under a prefix not in the default search path, set MANPATH:
+	   export MANPATH=$HOME/.local/share/man:$MANPATH
+
+       Add this to the shell profile for persistence. On Linux, manpath(1) can be used to inspect the current search path:
+	   manpath
+
+VERIFICATION
+       List installed files:
+	   ls -R /usr/local/share/man/man{1,3,5,7}
+
+       Check that each page parses correctly:
+	   make lint
+
+       Preview a page without installing:
+	   make preview FILE=man/man7/zig-variables.7
+
+       Render all pages to HTML, PDF, and plain text:
+	   make html pdf txt
+
+       Output is written to build/html, build/pdf, and build/txt respectively.
+
+PACKAGING
+       The Makefile supports DESTDIR for integration with package build systems. A typical packaging invocation is:
+	   make install DESTDIR=$RPM_BUILD_ROOT PREFIX=/usr
+
+       This places files under $RPM_BUILD_ROOT/usr/share/man. The FHS specifies /usr/share/man as the canonical location for sys‐
+       tem manual pages; /usr/local/share/man is used for locally installed software.
+
+       Do not run mandb during packaging. The package manager invokes it after installation.
+
+TROUBLESHOOTING
+   mandoc: not found
+       Install mandoc:
+	   sudo dnf install mandoc     # Fedora
+	   sudo apt install mandoc     # Debian
+	   sudo pacman -S mandoc       # Arch
+
+   groff: fatal error: cannot load 'DESC' description file for device 'pdf'
+       The groff installation is incomplete. Install ghostscript and retry:
+	   sudo dnf install ghostscript
+
+       The Makefile falls back to groff -Tps | ps2pdf when direct PDF output is unavailable.
+
+   cannot parse date, using it verbatim
+       The  .TH	 line  contains	 a  date  in a format mandoc does not recognize. Use ISO 8601 (YYYY-MM-DD) or a month name (Month
+       YYYY). Run make format-header to normalize dates automatically.
+
+   missing: zig (referenced in ...)
+       A page references another page that does not exist in the tree. Create the missing page, or  adjust  the	 cross-reference.
+       make check reports these without failing; make check-strict fails.
+
+   local variable is never mutated
+       This  is a Zig compiler message, not an installation error. It indicates that a var declaration in the page source was not
+       used. Manual pages are not compiled by Zig; if this message appears, it is being emitted by an unrelated tool.
+
+UNINSTALL
+       Remove installed pages:
+	   sudo make uninstall
+
+       With a custom prefix:
+	   make uninstall PREFIX=$HOME/.local
+
+       The uninstall target removes only the files that install would have copied. It does not remove the destination directories
+       themselves.
+
+FILES
+       /usr/local/share/man/man1/
+	      Default location for command pages.
+
+       /usr/local/share/man/man3/
+	      Default location for library reference pages.
+
+       /usr/local/share/man/man5/
+	      Default location for file format pages.
+
+       /usr/local/share/man/man7/
+	      Default location for topic overview pages.
+
+       build/ Generated output from make html, make pdf, and make txt. Removed by make clean.
+
+SEE ALSO
+       make(1), install(1), man(1), man(7), man-pages(7), manpath(1), mandb(8), mandoc(1), groff(1), ps2pdf(1)
+
+       Zig language reference: https://ziglang.org/documentation/
+
+AUTHORS
+       mroczect and contributors.
+
+COPYRIGHT
+       Copyright © 2026 mroczect.  Licensed under CC BY-SA 4.0.
+
+SOURCE
+       https://github.com/mroczect/zig-man
+
+Zig 0.17.0						    2026-01-01					       ZIG-MAN-INSTALL(7)

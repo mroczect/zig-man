@@ -1,0 +1,300 @@
+.TH ZIG_INTRODUCTION 7 "2026-10-06" "Zig 0.17.0" "Zig Manual"
+.SH NAME
+zig-introduction \- overview of the Zig programming language
+.SH DESCRIPTION
+Zig is a general-purpose programming language and toolchain for
+maintaining robust, optimal, and reusable software.
+.PP
+The language is designed around four properties:
+.TP
+\fBRobust\fR
+Behavior is correct even for edge cases such as out of memory.
+.TP
+\fBOptimal\fR
+Write programs the best way they can behave and perform.
+.TP
+\fBReusable\fR
+The same code works in many environments which have different
+constraints.
+.TP
+\fBMaintainable\fR
+Precisely communicate intent to the compiler and other programmers. The
+language imposes a low overhead to reading code and is resilient to
+changing requirements and environments.
+.SH DESIGN PRINCIPLES
+.SS Small, simple language
+Focus on debugging your application rather than debugging your
+programming language knowledge. Zig's entire syntax is specified with a
+580-line PEG grammar file.
+.PP
+There is no hidden control flow, no hidden memory allocations, no
+preprocessor, and no macros. If Zig code does not look like it is
+jumping away to call a function, then it is not.
+.PP
+Examples of hidden control flow in other languages:
+.IP \(bu 2
+D has \fB@property\fR functions, which are methods called with what looks
+like field access, so an expression like \fBc.d\fR might call a
+function.
+.IP \(bu 2
+C++, D, and Rust have operator overloading, so the \fB+\fR operator
+might call a function.
+.IP \(bu 2
+C++, D, and Go have throw/catch exceptions, so \fBfoo()\fR might throw
+an exception and prevent \fBbar()\fR from being called.
+.PP
+Zig promotes code maintenance and readability by making all control flow
+managed exclusively with language keywords and function calls.
+.SS Performance and safety: choose two
+Zig has four build modes, and they can all be mixed and matched all the
+way down to scope granularity:
+.nf
+    Debug          optimize off, safety on
+    ReleaseSafe    optimize on,  safety on
+    ReleaseFast    optimize on,  safety off
+    ReleaseSmall   optimize on,  safety off, size-focused
+.fi
+.PP
+With Zig one can rely on a safety-enabled build mode, and selectively
+disable safety at performance bottlenecks.
+.PP
+Zig uses Illegal Behavior as a tool for both bug prevention and
+performance enhancement. In Zig both signed and unsigned integers have
+illegal behavior on overflow, contrasted to only signed integers in C.
+This facilitates optimizations that are not available in C.
+.PP
+Zig is faster than C for several reasons:
+.IP \(bu 2
+All Zig code lives in one compilation unit, optimized together.
+.IP \(bu 2
+Carefully chosen illegal behavior.
+.IP \(bu 2
+Zig directly exposes a SIMD vector type.
+.IP \(bu 2
+The standard library provides essential data structures such as hash
+maps and array lists.
+.IP \(bu 2
+Advanced CPU features are enabled by default, unless cross-compiling.
+.SS Zig competes with C instead of depending on it
+The Zig Standard Library integrates with libc, but does not depend on
+it. A Hello World compiled with \fB-O ReleaseSmall\fR, debug symbols
+stripped, single-threaded mode, produces a 9.8 KiB static executable for
+the \fBx86_64-linux\fR target. A Windows build is even smaller, coming
+out to 4096 bytes.
+.SS Order-independent top level declarations
+Top level declarations such as global variables are order-independent
+and lazily analyzed. The initialization values of global variables are
+evaluated at compile-time.
+.SS Optional type instead of null pointers
+In other programming languages, null references are the source of many
+runtime exceptions. Unadorned Zig pointers cannot be null. However, any
+type can be made into an optional type by prefixing it with \fB?\fR.
+.PP
+To unwrap an optional value, one can use \fBorelse\fR to provide a
+default value, or use \fBif\fR. The same syntax works with \fBwhile\fR.
+.SS Manual memory management
+A library written in Zig is eligible to be used anywhere: desktop
+applications, low-latency servers, databases, operating system kernels,
+embedded devices, real-time software, web browsers or other plugins with
+WebAssembly, and by other programming languages using the C ABI.
+.PP
+Zig programmers must manage their own memory and must handle memory
+allocation failure. The Zig Standard Library follows the same rule: any
+function that needs to allocate memory accepts an allocator parameter.
+As a result, the Zig Standard Library can be used even for the
+freestanding target.
+.PP
+Zig provides \fBdefer\fR and \fBerrdefer\fR to make all resource
+management, not only memory, simple and easily verifiable.
+.SS Error handling
+Errors are values and may not be ignored. Errors can be handled with
+\fBcatch\fR. The keyword \fBtry\fR is a shortcut for
+\fBcatch |err| return err\fR.
+.PP
+\fBunreachable\fR is used to assert that no errors will occur. This
+invokes undefined behavior in the unsafe build modes, so use it only
+when success is guaranteed.
+.SS Stack traces on all targets
+Stack traces and error return traces work on all Tier 1 and some Tier 2
+targets, including freestanding. The standard library can capture a
+stack trace at any point and dump it to standard error later. The
+standard library's DebugAllocator uses this technique to report leaks
+and double frees.
+.SS Generic data structures and functions
+Types are values that must be known at compile-time. A generic data
+structure is a function that returns a type.
+.SS Compile-time reflection and code execution
+The \fB@typeInfo\fR builtin function provides reflection. The Zig
+Standard Library uses this technique to implement formatted printing
+entirely in Zig. In C and Rust, formatted printing is hard-coded into
+the compiler.
+.PP
+Zig can evaluate functions and blocks of code at compile-time. In some
+contexts, such as global variable initializations, the expression is
+implicitly evaluated at compile-time. Otherwise, one can explicitly
+evaluate code at compile-time with the \fBcomptime\fR keyword.
+.SS Integration with C libraries without FFI/bindings
+\fB@cImport\fR directly imports types, variables, functions, and simple
+macros for use in Zig. It even translates inline functions from C into
+Zig. This is accomplished by directly importing the C header file, with
+no API bindings.
+.SS Zig is also a C compiler
+Zig can compile C code directly:
+.nf
+    zig build-exe hello.c -lc
+    ./hello
+    Hello world
+.fi
+.PP
+Use \fB--verbose-cc\fR to see the C compiler command that was executed.
+This is thanks to Build Artifact Caching. Zig automatically parses the
+\fB.d\fR file using a robust caching system to avoid duplicating work.
+.SS Export functions, variables, and types for C code
+The \fBexport\fR keyword in front of functions, variables, and types
+causes them to be part of the library API. To make a static library:
+.nf
+    zig build-lib mathtest.zig
+.fi
+.PP
+To make a shared library:
+.nf
+    zig build-lib mathtest.zig -dynamic
+.fi
+.SS Cross-compiling is a first-class use case
+Zig builds for all supported targets independently of the host. There is
+no separate cross toolchain. To build a Hello World for
+\fBx86_64-windows\fR, \fBx86_64-macos\fR, and \fBaarch64-linux\fR:
+.nf
+    zig build-exe hello.zig -target x86_64-windows
+    zig build-exe hello.zig -target x86_64-macos
+    zig build-exe hello.zig -target aarch64-linux
+.fi
+.PP
+This works on any Tier 3 or higher target, for any Tier 3 or higher
+target.
+.SS Zig ships with libc
+Zig ships with libc for many targets. This means \fB-lc\fR for these
+targets does not depend on any system files. The total size of libc
+headers that Zig ships is 130 MiB uncompressed, but Zig binary tarballs
+remain roughly 50 MiB total, despite supporting libc for all these
+targets, as well as compiler-rt, libunwind, libcxx, and libtsan.
+.SH BUILD SYSTEM AND PACKAGE MANAGER
+Zig comes with a build system, so a separate tool to orchestrate the
+build process is not needed:
+.nf
+    zig init
+    info: created build.zig
+    info: created build.zig.zon
+    info: created src/main.zig
+    info: created src/root.zig
+.fi
+.PP
+The build system provides steps including \fBinstall\fR, \fBuninstall\fR,
+\fBrun\fR, and \fBtest\fR. Project-specific options include
+\fB-Dtarget\fR, \fB-Dcpu\fR, \fB-Dofmt\fR, \fB-Ddynamic-linker\fR, and
+\fB-Doptimize\fR with supported values \fBDebug\fR, \fBReleaseSafe\fR,
+\fBReleaseFast\fR, and \fBReleaseSmall\fR.
+.PP
+System integration options include \fB--search-prefix\fR,
+\fB--sysroot\fR, \fB--libc\fR, \fB--system\fR, \fB-fsys\fR, and
+\fB-fno-sys\fR.
+.PP
+General options include \fB-p\fR/\fB--prefix\fR (default:
+\fBzig-out\fR), \fB--prefix-lib-dir\fR, \fB--prefix-exe-dir\fR,
+\fB--prefix-include-dir\fR, and \fB--release\fR.
+.PP
+Run the build:
+.nf
+    zig build run
+    All your codebase are belong to us.
+    Run `zig build test` to run the tests.
+.fi
+.SH TARGET SUPPORT
+Zig uses a support tier system to communicate the level of support for
+different targets.
+.PP
+Notable changes in 0.17.0:
+.IP \(bu 2
+\fBaarch64-openbsd\fR is now tested natively in Zig's CI.
+.IP \(bu 2
+\fBaarch64-freebsd\fR and \fBaarch64-netbsd\fR CI jobs now run on pull
+requests too.
+.IP \(bu 2
+An LLVM bug that broke most \fBaarch64-windows\fR binaries has been
+worked around.
+.IP \(bu 2
+Zig now provides stack traces on crashes and failed assertions on
+32-bit ARM and SPARC.
+.IP \(bu 2
+Support for \fBloongarch32-linux-gnu[sf]\fR targets has been added.
+.IP \(bu 2
+Zig now has generally usable support for 64-bit SPARC, especially
+\fBsparc64-linux\fR.
+.IP \(bu 2
+The Standard Library has been ported to the x32 and N32 ABIs on x86-64
+and 64-bit MIPS, respectively.
+.IP \(bu 2
+Target information has been added for some game consoles:
+\fBaarch64-switch\fR, \fBarm-gba\fR, \fBmipsel-psx\fR, and
+\fBpowerpc-wiiu\fR.
+.IP \(bu 2
+Very early \fBxtensa-linux\fR support has been added.
+.SH DOCUMENTATION
+The Zig language reference is all on one page so it can be searched with
+the browser's search tool. The code samples in the official
+documentation are compiled and tested as part of the main test suite of
+Zig. The HTML version depends on no external files, so it can be used
+offline.
+.PP
+Additional resources:
+.IP \(bu 2
+In-depth Overview: a feature overview from a systems-programming
+perspective.
+.IP \(bu 2
+Why Zig When There is Already C++, D, and Rust?: an introduction for
+programmers coming from those languages.
+.IP \(bu 2
+Code Examples: a list of snippets to get a feeling for how Zig code
+looks.
+.IP \(bu 2
+Zig Build System: introduction to the Zig build system.
+.SH VERSION NOTES
+Zig 0.17.0 features 5 months of work: changes from 206 contributors,
+spread among 925 commits.
+.PP
+Major changes:
+.IP \(bu 2
+The Build System was reworked, including the introduction of the Build
+Server Protocol.
+.IP \(bu 2
+The ELF Linker was enhanced to the point where Incremental Compilation
+is expected to work for everyone on \fBx86_64-linux\fR.
+.IP \(bu 2
+\fB@bitCast\fR has been redesigned.
+.IP \(bu 2
+\fB@intFromEnum\fR and \fB@enumFromInt\fR are replaced by
+\fB@backingInt\fR and \fB@fromBackingInt\fR.
+.IP \(bu 2
+Array multiplication syntax is removed.
+.IP \(bu 2
+\fB@cImport\fR has been removed entirely.
+.IP \(bu 2
+The formal grammar (grammar.peg) and the handwritten parser now agree.
+.SH SEE ALSO
+.BR zig (1),
+.BR zig-build (1),
+.BR zig-variables (7),
+.BR zig-comptime (7),
+.BR zig-pointers (7),
+.BR zig-syntax (7)
+.PP
+Zig language reference: \fBhttps://ziglang.org/documentation/\fR
+.PP
+Zig overview: \fBhttps://ziglang.org/learn/overview/\fR
+.SH AUTHORS
+mroczect and contributors.
+.SH COPYRIGHT
+Copyright \(co 2026 mroczect.
+Licensed under CC BY-SA 4.0.
+.SH SOURCE
+https://github.com/mroczect/zig-man

@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            mandoc groff ghostscript hunspell hunspell-en-us
+
+      - name: make lint
+        run: make lint
+
+      - name: make check-strict
+        run: make check-strict
+
+      - name: make spell-strict
+        run: make spell-strict
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            mandoc groff ghostscript
+
+      - name: make html pdf txt
+        run: make html pdf txt
+
+      - name: upload html
+        uses: actions/upload-artifact@v4
+        with:
+          name: html
+          path: build/html
+          if-no-files-found: error
+
+      - name: upload pdf
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf
+          path: build/pdf
+          if-no-files-found: error
+
+      - name: upload txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: txt
+          path: build/txt
+          if-no-files-found: error

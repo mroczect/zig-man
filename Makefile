@@ -60,7 +60,7 @@ check-meta:
 	for f in $(PAGES); do \
 		sec=$${f##*.}; \
 		base=$$(basename "$$f" ".$$sec"); \
-		name=$$(echo "$$base" | tr 'a-z-' 'A-Z_'); \
+		name=$$(echo "$$base" | tr 'a-z-' 'A-Z-'); \
 		date=$$(git log -1 --format=%as -- "$$f" 2>/dev/null); \
 		[ -n "$$date" ] || date=$$(date +%F); \
 		expect=".TH $$name $$sec \"$$date\" \"$(ZM_VER)\" \"$(ZM_MANUAL)\""; \
@@ -162,7 +162,7 @@ format-header:
 	@for f in $(PAGES); do \
 		sec=$${f##*.}; \
 		base=$$(basename "$$f" ".$$sec"); \
-		name=$$(echo "$$base" | tr 'a-z-' 'A-Z_'); \
+		name=$$(echo "$$base" | tr 'a-z-' 'A-Z-'); \
 		date=$$(git log -1 --format=%as -- "$$f" 2>/dev/null); \
 		[ -n "$$date" ] || date=$$(date +%F); \
 		sed -i "1s|^\.TH .*|.TH $$name $$sec \"$$date\" \"$(ZM_VER)\" \"$(ZM_MANUAL)\"|" "$$f"; \

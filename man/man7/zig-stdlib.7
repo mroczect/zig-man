@@ -3,20 +3,35 @@
 zig-stdlib \- overview of the Zig Standard Library
 .SH DESCRIPTION
 The Zig Standard Library contains commonly used algorithms, data
-structures, and definitions to help build programs or libraries.
+structures, and definitions to help build programs or libraries. It is
+distributed with every Zig release and requires no external package
+manager.
 .PP
-The library ships with every Zig distribution. It is not a separate
-package, and no external dependency is required to use it.
+The library is organized as a single namespace, \fBstd\fR. Everything
+lives under that root; there is no separate include path or linking
+step. A program that uses any part of the Standard Library imports it
+with:
+.nf
+    const std = @import("std");
+.fi
 .PP
-The Zig Standard Library is documented separately from the language
+The library is written in Zig and compiled together with the user's
+code. This makes it available on freestanding targets, in operating
+system kernels, and in embedded environments where no runtime exists.
+.SH DOCUMENTATION
+The Standard Library is documented separately from the language
 reference. The upstream documentation is available at:
 .PP
 .RS 4
 \fBhttps://ziglang.org/documentation/master/std/\fR
 .RE
+.PP
+This page is an overview. It does not document individual functions or
+types. Refer to the upstream documentation for the complete API.
 .SH LOCAL DOCUMENTATION
-A local, offline copy of the Standard Library documentation is provided
-with each Zig distribution. It can be served over a local web server:
+A local, offline copy of the Standard Library documentation is
+generated from the installed compiler. It can be served over a local
+web server:
 .nf
     zig std
 .fi
@@ -26,58 +41,268 @@ URL to standard output. Open the URL in a web browser to read the
 documentation. Press Ctrl-C to stop the server.
 .PP
 The documentation is generated from doc comments in the source. It
-reflects the exact version of the Standard Library that is installed
-with the Zig compiler being used.
-.SH USE IN THIS MANUAL
-Many pages in this manual reference types, functions, and modules from
-the Standard Library. Refer to the upstream documentation for the
-complete API. This page only provides an overview; it does not document
-individual functions.
+reflects the exact version of the Standard Library installed with the
+Zig compiler being used.
 .PP
-Commonly referenced modules:
+The interface provides search (press \fBs\fR), navigation between
+namespaces, and a shortcut to the source of every symbol (press
+\fBu\fR). The viewer is a WebAssembly application; no network access is
+required beyond the local server.
+.SH STRUCTURE
+The Standard Library is organized as nested namespaces under
+\fBstd\fR. The following list describes the top-level modules that are
+used most frequently. It is not exhaustive.
+.SS Memory
 .TP
 \fBstd\.mem\fR
-Allocators, slices, and memory utilities.
-.TP
-\fBstd\.fs\fR
-Filesystem operations: file handles, directories, paths.
-.TP
-\fBstd\.io\fR
-Input and output primitives.
-.TP
-\fBstd\.fmt\fR
-Formatted printing and parsing.
-.TP
-\fBstd\.math\fR
-Numeric functions and constants.
-.TP
-\fBstd\.testing\fR
-Assertions and test utilities.
-.TP
-\fBstd\.json\fR
-JSON serialization and deserialization.
-.TP
-\fBstd\.process\fR
-Process arguments, environment, and spawning.
-.TP
-\fBstd\.Thread\fR
-Threads, mutexes, and synchronization primitives.
+Byte and slice operations: \fBcopyForwards\fR, \fBcopyBackwards\fR,
+\fBeql\fR, \fBindexOf\fR, \fBstartsWith\fR, \fBendsWith\fR, and the
+\fBAllocator\fR interface. Also hosts \fBsentinel\fR, \fBtokenize\fR,
+and \fBsplit\fR helpers.
 .TP
 \fBstd\.heap\fR
-General-purpose allocators: \fBGPA\fR, \fBc_allocator\fR,
-\fBpage_allocator\fR.
+Concrete allocator implementations: \fBGeneralPurposeAllocator\fR,
+\fBpage_allocator\fR, \fBc_allocator\fR, \fBSmpAllocator\fR,
+\fBArenaAllocator\fR, \fBFixedBufferAllocator\fR.
+.TP
+\fBstd\.mem\.Allocator\fR
+The vtable-based allocator interface. Every allocation site accepts an
+\fBAllocator\fR value, either by pointer or by copy.
+.SS Filesystem and process
+.TP
+\fBstd\.fs\fR
+File and directory handling: \fBFile\fR, \fBDir\fR, \fBopenFile\fR,
+\fBcreateFile\fR, \fBmakeDir\fR, \fBdeleteFile\fR, path resolution
+(\fBrealpath\fR, \fBresolve\fR), and the \fBpath\fR sub-namespace.
+.TP
+\fBstd\.process\fR
+Command-line arguments (\fBargsAlloc\fR), environment variables
+(\fBgetEnvMap\fR), and child process spawning (\fBChild\fR,
+\fBChild\.run\fR).
+.TP
+\fBstd\.os\fR
+OS-level primitives that do not fit elsewhere: file descriptors,
+system calls, and platform-specific constants.
+.SS Input and output
+.TP
+\fBstd\.io\fR
+Byte and buffered I/O. Provides \fBReader\fR, \fBWriter\fR, and the
+associated \fBbufferedReader\fR and \fBbufferedWriter\fR adapters used
+throughout the library.
+.TP
+\fBstd\.fmt\fR
+Formatted printing and parsing: \fBformat\fR, \fBallocPrint\fR,
+\fBparseInt\fR, \fBparseFloat\fR, and the \fBformat\fR method
+convention. Format strings are parsed at compile time where the format
+is comptime-known.
+.SS Collections
+.TP
+\fBstd\.ArrayList\fR
+Growable array. Offers \fBinit\fR, \fBappend\fR, \fBappendSlice\fR,
+\fBpop\fR, \fBorderedRemove\fR, and \fBswapRemove\fR. Managed and
+unmanaged variants both exist.
+.TP
+\fBstd\.HashMap\fR
+Hash map with open addressing. \fBStringHashMap\fR, \fBAutoHashMap\fR,
+and \fBHashMapUnmanaged\fR are specialized variants.
+.TP
+\fBstd\.ArrayHashMap\fR
+Hash map that preserves insertion order. \fBStringArrayHashMap\fR is
+the common specialization.
+.TP
+\fBstd\.BoundedArray\fR
+Fixed-capacity array with a length field, stored inline.
+.TP
+\fBstd\.PriorityQueue\fR
+Binary heap.
+.TP
+\fBstd\.RingBuffer\fR
+Fixed-capacity FIFO queue.
+.SS Text and data formats
+.TP
+\fBstd\.json\fR
+JSON parsing and serialization. \fBparseFromSlice\fR,
+\fBparseFromTokenSource\fR, \fBstringify\fR, and the streaming
+\fBScanner\fR.
+.TP
+\fBstd\.unicode\fR
+UTF-8 and UTF-16 encoding and decoding.
+.TP
+\fBstd\.base64\fR
+Base64 encoding and decoding, standard and URL-safe alphabets.
+.TP
+\fBstd\.crypto\fR
+Hashes (SHA-2, SHA-3, BLAKE3), MACs (HMAC, Poly1305), and
+cryptographic primitives. Includes \fBstd\.crypto\.random\fR for
+cryptographically secure randomness.
+.TP
+\fBstd\.compress\fR
+Compression codecs: \fBflate\fR, \fBgzip\fR, \fBzlib\fR, \fBzstd\fR,
+\fBlzma\fR, \fBxz\fR.
+.SS Networking
+.TP
+\fBstd\.net\fR
+TCP and UDP sockets, address parsing (\fBAddress\fR,
+\fBAddress\.parseIp\fR), and DNS resolution.
+.TP
+\fBstd\.http\fR
+Minimal HTTP client. Server implementations are outside the scope of
+the Standard Library.
+.SS Concurrency
+.TP
+\fBstd\.Thread\fR
+Thread creation (\fBspawn\fR), \fBMutex\fR, \fBRwLock\fR,
+\fBCondition\fR, and thread-local storage helpers.
+.TP
+\fBstd\.atomic\fR
+Atomic operations with explicit memory ordering:
+\fBAtomic\.load\fR, \fBAtomic\.store\fR, \fBAtomic\.rmw\fR,
+\fBAtomic\.cmpxchg\fR.
+.TP
+\fBstd\.Thread\.Pool\fR
+A simple work-stealing task pool.
+.SS Numeric and utility
+.TP
+\fBstd\.math\fR
+Numeric constants (\fBpi\fR, \fBe\fR), floating-point helpers,
+\fBceil\fR, \fBfloor\fR, \fBabs\fR, \fBmin\fR, \fBmax\fR, and bit
+manipulation functions.
+.TP
+\fBstd\.time\fR
+Monotonic timestamps (\fBnanoTimestamp\fR, \fBmilliTimestamp\fR), the
+\fBTimer\fR type, and calendar conversions in \fBstd\.time\.epoch\fR.
+.TP
+\fBstd\.testing\fR
+Test utilities: \fBexpect\fR, \fBexpectEqual\fR, \fBexpectEqualStrings\fR,
+\fBexpectError\fR, and \fBcheckAllAllocationFailures\fR for exercising
+out-of-memory paths.
+.TP
+\fBstd\.debug\fR
+Runtime debugging helpers: \fBassert\fR, \fBprint\fR,
+\fBprintStackTrace\fR, and the \fBpanic\fR interface.
+.TP
+\fBstd\.log\fR
+Structured logging with scoped levels.
+.TP
+\fBstd\.Build\fR
+The build system API used by \fBbuild\.zig\fR. Not intended for use at
+runtime.
 .SH ALLOCATOR MODEL
 The Standard Library does not have a default allocator. Any function
-that allocates memory takes an allocator as a parameter. This makes the
-library usable in freestanding environments, operating system kernels,
-and embedded targets where no default heap exists.
+that allocates memory accepts an allocator parameter. This makes the
+library usable in environments where no heap exists, and makes every
+allocation explicit and traceable.
 .PP
-See \fBstd\.mem\.Allocator\fR for the allocator interface.
+The allocator interface is \fBstd\.mem\.Allocator\fR. An allocator
+value contains a pointer and a vtable with \fBalloca\fR, \fBresize\fR,
+and \fBfree\fR methods. Any type that implements those methods can be
+passed where an \fBAllocator\fR is expected.
+.PP
+Common allocators:
+.TP
+\fBGeneralPurposeAllocator\fR
+Default choice for programs. Detects leaks and use-after-free when
+safety is enabled. Configurable per-instance.
+.TP
+\fBpage_allocator\fR
+Allocates whole pages from the operating system. No bookkeeping.
+Suitable for backing larger structures.
+.TP
+\fBc_allocator\fR
+Forwards to \fBmalloc\fR and \fBfree\fR from the C library. Available
+only when linking libc.
+.TP
+\fBArenaAllocator\fR
+Bump allocator that frees all allocations at once. Useful for parsing
+and one-shot processing.
+.TP
+\fBFixedBufferAllocator\fR
+Allocates from a caller-provided buffer. Useful for stack-allocated
+scratch space and for tests.
+.SH IO MODEL
+The Standard Library exposes input and output through the \fBReader\fR
+and \fBWriter\fR interfaces in \fBstd\.io\fR. Both follow the same
+pattern as \fBAllocator\fR: a vtable plus a context pointer.
+.PP
+The standard streams are available as \fBstd\.io\.getStdOut\fR,
+\fBstd\.io\.getStdErr\fR, and \fBstd\.io\.getStdIn\fR. Their return
+type depends on the target and on whether libc is linked.
+.PP
+Buffered I/O is provided by \fBstd\.io\.bufferedReader\fR and
+\fBstd\.io\.bufferedWriter\fR. Buffering is explicit; the library does
+not buffer automatically.
+.SH COMPTIME
+Large parts of the Standard Library are usable in \fBcomptime\fR
+contexts. Format strings, hash map parameters, and type constructors
+are all evaluated at compile time when their inputs are known at
+compile time.
+.PP
+For example, \fBstd\.fmt\.format\fR parses its format string during
+semantic analysis, so a malformed format string is a compile error, not
+a runtime failure.
+.SH TESTING
+The \fBstd\.testing\fR module provides the assertion helpers used by
+the Standard Library's own test suite and by the Zig compiler's
+\fBzig test\fR command.
+.PP
+Tests are declared with the \fBtest\fR keyword at file scope. The
+\fBrefAllDecls\fR function forces analysis of every declaration in a
+namespace, which is used to catch unused or unreferenced errors.
+.SH FREESTANDING
+On freestanding targets the Standard Library disables every module
+that depends on a hosted operating system. Modules like \fBstd\.fs\fR,
+\fBstd\.net\fR, and \fBstd\.process\fR are not available. Modules that
+depend only on \fBstd\.mem\fR, \fBstd\.math\fR, \fBstd\.fmt\fR,
+\fBstd\.json\fR, \fBstd\.crypto\fR, and \fBstd\.compress\fR remain
+usable.
+.PP
+The exact set of available modules is determined by the builtin
+\fB@import("builtin")\fR\.os\.tag and by the value of
+\fB@import("builtin")\fR\.link_libc.
+.SH VERSION NOTES
+The following changes in Zig 0.17.0 affect the Standard Library.
+.TP
+\fBNew IO interface\fR
+\fBstd\.io\fR has been reorganized around a new \fBReader\fR and
+\fBWriter\fR interface. The old interfaces are being phased out.
+.TP
+\fB@cImport removed\fR
+The \fB@cImport\fR builtin has been removed entirely. C headers must
+now be translated with \fBtranslate-c\fR or by writing bindings by
+hand.
+.TP
+\fB@intFromEnum and @enumFromInt replaced\fR
+Replaced by \fB@backingInt\fR and \fB@fromBackingInt\fR. Code that
+uses the old builtins must be updated.
+.TP
+\fBArrayList changes\fR
+The interface of \fBArrayList\fR has been adjusted; both managed and
+unmanaged variants now share a common implementation. See the
+upstream release notes for the exact API.
+.TP
+\fBArray multiplication removed\fR
+Initialization of arrays with the \fB**\fR operator has been removed.
+Use \fB@splat\fR or an explicit loop.
+.SH CROSS-REFERENCES
+Pages in this manual that reference the Standard Library:
+.TP
+\fBzig-variables\fR(7)
+Discusses \fBconst\fR, \fBvar\fR, and the \fBstd\.mem\.Allocator\fR
+ownership conventions.
+.TP
+\fBzig-comptime\fR(7)
+Covers the compile-time facilities used by \fBstd\.fmt\fR, generic
+data structures, and lookup table generation.
+.TP
+\fBzig-introduction\fR(7)
+Context for the design decisions that shape the library.
 .SH SEE ALSO
 .BR zig (1),
 .BR zig-build (1),
 .BR zig-introduction (7),
-.BR zig-variables (7)
+.BR zig-variables (7),
+.BR zig-comptime (7),
+.BR zig-pointers (7)
 .PP
 Standard Library documentation:
 \fBhttps://ziglang.org/documentation/master/std/\fR
